@@ -1,5 +1,6 @@
 // main.tsx
 import { Devvit } from '@devvit/public-api';
+import { ChannelStatus } from '@devvit/public-api/types/realtime.js';
 import { StyledBox } from './StyledBox.js';
 
 Devvit.configure({
@@ -9,10 +10,39 @@ Devvit.configure({
   http: true,
 });
 
-const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis, reddit, postId, ui}) => {
+type RealtimeMessage = {
+  top18: { word: string; rank: number }[];
+  session: string;
+};
 
+function sessionId(): string {
+  let id = '';
+  const asciiZero = '0'.charCodeAt(0);
+  for (let i = 0; i < 4; i++) {
+    id += String.fromCharCode(Math.floor(Math.random() * 26) + asciiZero);
+  }
+  return id;
+}
+
+const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis, reddit, postId, ui}) => {
+  const mySession = sessionId();
   const [showInfo, setShowInfo] = useState(false);
-  const [top18, setTop18] = useState<{ word: string; rank: number }[]>([]);
+
+  const [top18, setTop18] = useState<{ word: string; rank: number }[]>(async () => {
+    const data = JSON.parse((await redis.get('top_18_guesses')) || '[]');
+    return data;
+  });
+
+  const top18Channel = useChannel<RealtimeMessage>({
+    name: 'top18_state',
+    onMessage: (msg) => {
+      if (msg.session !== mySession) {
+        setTop18(msg.top18);
+      }
+    },
+    onSubscribed: async () => {},
+  });
+  top18Channel.subscribe();
 
   async function initializeGame() {
     const currGameId = await redis.get('curr_game_id');
@@ -96,23 +126,25 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
       } else {
         const rank = wordIndex + 1;
         ui.showToast({ text: `${guess} rank: ${rank}` });
-        const top18: { word: string; rank: number }[] = JSON.parse(
+        const top18Stored: { word: string; rank: number }[] = JSON.parse(
           (await redis.get('top_18_guesses')) || '[]'
         );
-        if (top18.length < 18) {
-          top18.push({ word: guess, rank });
+        if (top18Stored.length < 18) {
+          top18Stored.push({ word: guess, rank });
         } else {
-          const maxRankIndex = top18.reduce(
+          const maxRankIndex = top18Stored.reduce(
             (maxIndex, item, index, array) =>
               item.rank > array[maxIndex].rank ? index : maxIndex,
             0
           );
-          if (rank < top18[maxRankIndex].rank) {
-            top18[maxRankIndex] = { word: guess, rank };
+          if (rank < top18Stored[maxRankIndex].rank) {
+            top18Stored[maxRankIndex] = { word: guess, rank };
           }
         }
-        top18.sort((a, b) => a.rank - b.rank);
-        await redis.set('top_18_guesses', JSON.stringify(top18));
+        top18Stored.sort((a, b) => a.rank - b.rank);
+        await redis.set('top_18_guesses', JSON.stringify(top18Stored));
+        setTop18(top18Stored);
+        await top18Channel.send({ top18: top18Stored, session: mySession });
         console.log('Updated Top 18 Guesses:', top18);
       }
     }
