@@ -33,6 +33,17 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     return data;
   });
 
+  // Added states for currentTitle and currGameId
+  const [currentTitle, setCurrentTitle] = useState<string>(async () => {
+    if (!postId) return '';
+    const post = await reddit.getPostById(postId);
+    return post.title || '';
+  });
+
+  const [currGameIdState, setCurrGameIdState] = useState<string>(async () => {
+    return (await redis.get('curr_game_id')) || '1';
+  });
+
   const top18Channel = useChannel<RealtimeMessage>({
     name: 'top18_state',
     onMessage: (msg) => {
@@ -49,7 +60,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     if (!currGameId) {
       await redis.set('curr_game_id', '1');
     }
-    await updateRankedWordList(parseInt(currGameId || '1', 10));
+    // await updateRankedWordList(parseInt(currGameId || '1', 10));
   }
 
   // Increment curr_game_id and update ranked_word_list
@@ -126,6 +137,37 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
       } else {
         const rank = wordIndex + 1;
         ui.showToast({ text: `${guess} rank: ${rank}` });
+
+        if (rank === 1) {
+          const currGameId = await redis.get('curr_game_id');
+          const top18Guesses = JSON.parse((await redis.get('top_18_guesses')) || '[]');
+          const gameHistory = {
+            solved_by: guess,
+            target_word: rankedWordList[0],
+            top_18: top18Guesses,
+          };
+          await redis.set(`game_history_${currGameId}`, JSON.stringify(gameHistory));
+          await incrementGameId();
+          const newGameId = await redis.get('curr_game_id');
+          await redis.del('top_18_guesses'); // Clear top 18 guesses
+          setTop18([]);
+          await top18Channel.send({ top18: [], session: mySession });
+          const currentSubreddit = await reddit.getCurrentSubreddit();
+          await reddit.submitPost({
+            title: `Proximity #${newGameId}`,
+            subredditName: currentSubreddit.name,
+            preview: (
+              <vstack padding="medium" cornerRadius="medium">
+                <text style="heading" size="medium">
+                  Loading a hand-crafted custom app…
+                </text>
+              </vstack>
+            ),
+          });
+          ui.showToast({ text: `Congratulations! You've guessed the target word.` });
+          return;
+        }
+
         const top18Stored: { word: string; rank: number }[] = JSON.parse(
           (await redis.get('top_18_guesses')) || '[]'
         );
@@ -228,7 +270,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
         <spacer width="20px" />
       </hstack>
       <vstack alignment="center middle" grow>
-          <button onPress={showGuessForm} >
+          <button onPress={showGuessForm} disabled={!currentTitle.includes(`Proximity #${currGameIdState}`)}>
             Submit Guess
           </button>
           <spacer height="10px" />
