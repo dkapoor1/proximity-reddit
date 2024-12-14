@@ -44,6 +44,12 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     return (await redis.get('curr_game_id')) || '1';
   });
 
+  const [gameHistory, setGameHistory] = useState<{
+    solved_by?: string;
+    target_word?: string;
+    top_18?: { word: string; rank: number }[];
+  }>(() => ({ top_18: [] }));
+
   const top18Channel = useChannel<RealtimeMessage>({
     name: 'top18_state',
     onMessage: (msg) => {
@@ -202,9 +208,18 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     setTop18(top18Data);
   });
 
-  const renderGuesses = () => {
+  const currentTitleIdMatch = currentTitle.match(/Proximity #(\d+)/);
+  const currentTitleId = currentTitleIdMatch ? currentTitleIdMatch[1] : '';
+  useState(async () => {
+    if (!currentTitle.includes(`Proximity #${currGameIdState}`) && currentTitleId) {
+      const historyData = JSON.parse((await redis.get(`game_history_${currentTitleId}`)) || '{}');
+      setGameHistory(historyData);
+    }
+  });
+
+  const renderGuesses = (guesses: { word: string; rank: number }[]) => {
     const filledGuesses = Array.from({ length: 18 }, (_, index) =>
-      top18[index] || { word: '', rank: '' }
+      guesses[index] || { word: '', rank: 0 }
     );
   
     return (
@@ -270,15 +285,22 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
         <spacer width="20px" />
       </hstack>
       <vstack alignment="center middle" grow>
-          <button onPress={showGuessForm} disabled={!currentTitle.includes(`Proximity #${currGameIdState}`)}>
-            Submit Guess
-          </button>
-          <spacer height="10px" />
-          {renderGuesses()}
+        {currentTitle.includes(`Proximity #${currGameIdState}`) ? (
+          <button onPress={showGuessForm}>Submit Guess</button>
+        ) : (
+          <text>
+            Target Word: {gameHistory.target_word ?? ''}, guessed by {gameHistory.solved_by ?? ''}
+          </text>
+        )}
+        <spacer height="10px" />
+          {currentTitle.includes(`Proximity #${currGameIdState}`)
+          ? renderGuesses(top18)
+          : renderGuesses(gameHistory.top_18 || [])
+        }
       </vstack>
     </vstack>
   );
-    };
+};
 
 Devvit.addCustomPostType({
   name: 'Proximity',
