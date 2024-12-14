@@ -2,6 +2,7 @@
 import { Devvit } from '@devvit/public-api';
 import { ChannelStatus } from '@devvit/public-api/types/realtime.js';
 import { StyledBox } from './StyledBox.js';
+import { HowToPlay } from './HowToPlay.js';
 
 Devvit.configure({
   redis: true,
@@ -261,21 +262,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
 
   if (showInfo) {
     return (
-      <vstack width="100%" height="100%">
-        <hstack width="100%" alignment="middle">
-          <spacer grow />
-          <button
-            icon="close"
-            width={10}
-            onPress={() => setShowInfo(false)}
-          />
-          <spacer width="20px" />
-        </hstack>
-        <spacer height="20px" />
-        <vstack alignment="center middle" grow>
-          <text>Some informational text here.</text>
-        </vstack>
-      </vstack>
+      <HowToPlay onClose={() => setShowInfo(false)} />
     );
   }
 
