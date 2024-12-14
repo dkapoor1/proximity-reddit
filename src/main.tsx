@@ -12,7 +12,7 @@ Devvit.configure({
 const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis, reddit, postId, ui}) => {
 
   const [showInfo, setShowInfo] = useState(false);
-  const [guesses, setGuesses] = useState<string[]>([]);
+  const [top18, setTop18] = useState<{ word: string; rank: number }[]>([]);
 
   async function initializeGame() {
     const currGameId = await redis.get('curr_game_id');
@@ -80,60 +80,82 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
       acceptLabel: 'Submit',
     },
     async (values) => {
-      const guess = values.guess;
+      const guess = values.guess.trim().toLowerCase();
       if (!guess) {
         ui.showToast({ text: "You didn't enter a guess!" });
         return;
       }
+      const rankedWordList: string[] = JSON.parse(
+        (await redis.get('ranked_word_list')) || '[]'
+      );
 
-      const storedGuesses: string[] = JSON.parse((await redis.get(`guesses:${postId}`)) || '[]');
-      const updatedGuesses = [...storedGuesses, guess];
-      await redis.set(`guesses:${postId}`, JSON.stringify(updatedGuesses));
-      setGuesses(updatedGuesses);
-      console.log('Updated Guesses:', updatedGuesses);
-      ui.showToast({ text: 'Guess submitted!' });      
+      const wordIndex = rankedWordList.indexOf(guess);
+      if (wordIndex === -1) {
+        ui.showToast({ text: `"${guess}" not found in list.` });
+        return;
+      } else {
+        const rank = wordIndex + 1;
+        ui.showToast({ text: `${guess} rank: ${rank}` });
+        const top18: { word: string; rank: number }[] = JSON.parse(
+          (await redis.get('top_18_guesses')) || '[]'
+        );
+        if (top18.length < 18) {
+          top18.push({ word: guess, rank });
+        } else {
+          const maxRankIndex = top18.reduce(
+            (maxIndex, item, index, array) =>
+              item.rank > array[maxIndex].rank ? index : maxIndex,
+            0
+          );
+          if (rank < top18[maxRankIndex].rank) {
+            top18[maxRankIndex] = { word: guess, rank };
+          }
+        }
+        top18.sort((a, b) => a.rank - b.rank);
+        await redis.set('top_18_guesses', JSON.stringify(top18));
+        console.log('Updated Top 18 Guesses:', top18);
+      }
     }
   );
 
   async function showGuessForm() {
     ui.showForm(guessForm);
-    const storedGuesses: string[] = JSON.parse((await redis.get(`guesses:${postId}`)) || '[]');
-    setGuesses(storedGuesses);
   }
 
   useState(async () => {
     await initializeGame();
-    const storedGuesses: string[] = JSON.parse((await redis.get(`guesses:${postId}`)) || '[]');
-    setGuesses(storedGuesses);
+    const top18Data = JSON.parse((await redis.get('top_18_guesses')) || '[]');
+    setTop18(top18Data);
   });
 
   const renderGuesses = () => {
-    const recentGuesses = guesses.slice(-18); // Last 18 guesses
-    const filledGuesses = Array.from({ length: 18 }, (_, index) => recentGuesses[index] || '');
+    const filledGuesses = Array.from({ length: 18 }, (_, index) =>
+      top18[index] || { word: '', rank: '' }
+    );
   
     return (
       <vstack>
         <hstack>
           <vstack>
-            {filledGuesses.slice(0, 6).map((guess, index) => (
+            {filledGuesses.slice(0, 6).map((item) => (
               <StyledBox
-                content={guess ? `${index + 1}. ${guess}` : ''}
+                content={item.word ? `${item.word}: ${item.rank}` : ''}
                 borderColor="#007bff"
               />
             ))}
           </vstack>
           <vstack>
-            {filledGuesses.slice(6, 12).map((guess, index) => (
+            {filledGuesses.slice(6, 12).map((item) => (
               <StyledBox
-                content={guess ? `${6 + index + 1}. ${guess}` : ''}
+                content={item.word ? `${item.word}: ${item.rank}` : ''}
                 borderColor="#28a745"
               />
             ))}
           </vstack>
           <vstack>
-            {filledGuesses.slice(12, 18).map((guess, index) => (
+            {filledGuesses.slice(12, 18).map((item) => (
               <StyledBox
-                content={guess ? `${12 + index + 1}. ${guess}` : ''}
+                content={item.word ? `${item.word}: ${item.rank}` : ''}
                 borderColor="#ff8800"
               />
             ))}
