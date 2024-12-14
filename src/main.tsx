@@ -48,7 +48,12 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     solved_by?: string;
     target_word?: string;
     top_18?: { word: string; rank: number }[];
-  }>(() => ({ top_18: [] }));
+  }>({ target_word: '', solved_by: '', top_18: [] });
+
+  const [currentUsername] = useState(async () => {
+    const currentUser = await reddit.getCurrentUser();
+    return currentUser?.username || 'anonymous'; 
+  });  
 
   const top18Channel = useChannel<RealtimeMessage>({
     name: 'top18_state',
@@ -148,7 +153,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
           const currGameId = await redis.get('curr_game_id');
           const top18Guesses = JSON.parse((await redis.get('top_18_guesses')) || '[]');
           const gameHistory = {
-            solved_by: guess,
+            solved_by: currentUsername,
             target_word: rankedWordList[0],
             top_18: top18Guesses,
           };
