@@ -6,12 +6,65 @@ Devvit.configure({
   redis: true,
   redditAPI: true,
   realtime: true,
+  http: true,
 });
 
 const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis, reddit, postId, ui}) => {
 
   const [showInfo, setShowInfo] = useState(false);
   const [guesses, setGuesses] = useState<string[]>([]);
+
+  async function initializeGame() {
+    const currGameId = await redis.get('curr_game_id');
+    if (!currGameId) {
+      await redis.set('curr_game_id', '1');
+    }
+    await updateRankedWordList(parseInt(currGameId || '1', 10));
+  }
+
+  // Increment curr_game_id and update ranked_word_list
+  async function incrementGameId() {
+    const currGameId = await redis.get('curr_game_id');
+    const newGameId = (parseInt(currGameId || '1', 10) + 1).toString();
+    await redis.set('curr_game_id', newGameId);
+    await updateRankedWordList(parseInt(newGameId, 10));
+    ui.showToast({ text: `Game ID updated to ${newGameId}` });
+  }
+
+  // Fetch and update ranked_word_list from S3
+  async function updateRankedWordList(gameId: number) {
+    const s3Url = `https://proximity-game.s3.us-east-1.amazonaws.com/proximity_devvit_${gameId}.json`;
+
+    try {
+      // Attempt to fetch from S3
+      const response = await fetch(s3Url);
+      if (!response.ok) throw new Error(`Failed to fetch from S3 for Game ID ${gameId}`);
+  
+      const data = await response.json();
+      if (data.rankings && Array.isArray(data.rankings)) {
+        await redis.set('ranked_word_list', JSON.stringify(data.rankings));
+        console.log(`Ranked word list updated from S3 for Game ID ${gameId}`);
+      } else {
+        throw new Error('Invalid word list format from S3');
+      }
+    } catch (s3Error) {
+      console.error(`S3 fetch error: ${s3Error}`);
+  
+      try {
+        // Attempt to load from local file
+        const data = await import(`./word-lists/proximity_devvit_${gameId}.json`);
+        if (data.rankings && Array.isArray(data.rankings)) {
+          await redis.set('ranked_word_list', JSON.stringify(data.rankings));
+          console.log(`Ranked word list updated from local file for Game ID ${gameId}`);
+        } else {
+          throw new Error('Invalid word list format from local file');
+        }
+      } catch (localError) {
+        console.error(`Local fetch error: ${localError}`);
+        ui.showToast({ text: `Failed to update ranked word list for Game ID ${gameId} from both S3 and local file.` });
+      }
+    }
+  }
 
   const guessForm = useForm(
     {
@@ -38,7 +91,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
       await redis.set(`guesses:${postId}`, JSON.stringify(updatedGuesses));
       setGuesses(updatedGuesses);
       console.log('Updated Guesses:', updatedGuesses);
-      ui.showToast({ text: 'Guess submitted!' });
+      ui.showToast({ text: 'Guess submitted!' });      
     }
   );
 
@@ -49,6 +102,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
   }
 
   useState(async () => {
+    await initializeGame();
     const storedGuesses: string[] = JSON.parse((await redis.get(`guesses:${postId}`)) || '[]');
     setGuesses(storedGuesses);
   });
