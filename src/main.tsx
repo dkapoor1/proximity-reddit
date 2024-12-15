@@ -321,7 +321,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
 
   return (
     <vstack width="100%" height="100%">
-      <spacer height="5px" />
+      <spacer height="10px" />
       <hstack width="100%" alignment="middle">
         <spacer width="10px" />
           <button
@@ -330,11 +330,17 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
           />
         <spacer grow />
         {currentTitle.includes(`Proximity #${currGameIdState}`) ? (
-          <button onPress={showGuessForm}>Submit Guess</button>
+          <button appearance='primary' onPress={showGuessForm}>Submit Guess</button>
         ) : (
-          <text>
-            Target Word: {gameHistory.target_word ?? ''}, guessed by {gameHistory.solved_by ?? ''}
-          </text>
+          <hstack>
+            <text>Target Word:</text>
+            <spacer width="5px" />
+            <text weight="bold">{gameHistory.target_word ?? ''}</text>
+            <text>, guessed by</text>
+            <spacer width="5px" />
+            <text weight="bold">u/{gameHistory.solved_by ?? ''}</text>
+            <text> </text>
+          </hstack>
         )}
         <spacer grow />
         <button
