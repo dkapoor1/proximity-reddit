@@ -3,7 +3,8 @@ import { Devvit } from '@devvit/public-api';
 interface StyledBoxProps {
   word: string;
   rank: number;
-  width?: Devvit.Blocks.SizeString;
+  minWidth?: Devvit.Blocks.SizeString;
+  maxWidth?: Devvit.Blocks.SizeString;
   height?: Devvit.Blocks.SizeString;
   borderColor?: string;
   backgroundColor?: string;
@@ -13,14 +14,16 @@ export const StyledBox = (props: StyledBoxProps): JSX.Element => {
   const {
     word,
     rank,
-    width = '140px',
+    minWidth = '80px',
+    maxWidth = '130px',
     height = '30px',
     borderColor = '#7d79d2',
   } = props;
 
   return (
     <hstack
-      width={width}
+      minWidth={minWidth}
+      maxWidth={maxWidth}
       height={height}
       borderColor={borderColor}
       padding="xsmall"

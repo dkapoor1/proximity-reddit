@@ -237,7 +237,6 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     );
   
     return (
-      <vstack>
         <hstack>
           <vstack>
             {filledGuesses.slice(0, 6).map((item) => (
@@ -255,7 +254,6 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
             ))}
           </vstack>
         </hstack>
-      </vstack>
     );
   };  
 
@@ -340,6 +338,9 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
         />
         <spacer width="10px" />
       </hstack>
+      <vstack alignment="center bottom" grow>
+        <text weight="bold">Top 18 Guesses (word, rank)</text>
+      </vstack>
       <vstack alignment="center middle" grow>
         <spacer height="10px" />
           {currentTitle.includes(`Proximity #${currGameIdState}`)
