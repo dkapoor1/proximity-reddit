@@ -160,6 +160,8 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
             target_word: rankedWordList[0],
             top_18: top18Guesses,
           };
+          const leaderboardKey = 'leaderboard';
+          await redis.hincrby(leaderboardKey, currentUsername, 1);
           await redis.set(`game_history_${currGameId}`, JSON.stringify(gameHistory));
           await incrementGameId();
           const newGameId = await redis.get('curr_game_id');
@@ -269,10 +271,49 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
   }
 
   if (showLeaderboard) {
+    const [leaderboardData, setLeaderboardData] = useState<{ username: string; solves: number }[] | null>(null);
+  
+    // Fetch leaderboard data once before rendering
+    useState(async () => {
+      try {
+        const leaderboardKey = 'leaderboard';
+        const rawData = await redis.hgetall(leaderboardKey);
+        console.log('Raw data:', rawData);
+  
+        if (rawData) {
+          const sortedData = Object.entries(rawData)
+            .map(([username, solves]) => ({
+              username,
+              solves: parseInt(solves as string, 10),
+            }))
+            .sort((a, b) => b.solves - a.solves)
+            .slice(0, 10); // Take top 10 users
+          console.log('Sorted data:', sortedData);
+          setLeaderboardData(sortedData);
+        } else {
+          setLeaderboardData([]); // Handle case when no data is available
+        }
+      } catch (error) {
+        console.error('Failed to fetch leaderboard:', error);
+        setLeaderboardData([]); // Fallback in case of error
+      }
+    });
+  
+    if (leaderboardData === null) {
+      return (
+        <vstack width="100%" height="100%" alignment="center middle">
+          <text size="medium" weight="bold">Loading...</text>
+        </vstack>
+      );
+    }
+  
     return (
-      <Leaderboard onClose={() => setShowLeaderboard(false)} />
+      <Leaderboard
+        onClose={() => setShowLeaderboard(false)}
+        leaderboard={leaderboardData}
+      />
     );
-  }
+  }  
 
   return (
     <vstack width="100%" height="100%">
