@@ -11,6 +11,7 @@ export const Leaderboard = ({
         <vstack width="100%" height="100%">
             <spacer height="5px" />
             <hstack width="100%" alignment="middle">
+                <spacer width="20px" />
                 <spacer grow />
                 <text wrap size="large" weight="bold">
                     Leaderboard
@@ -22,6 +23,7 @@ export const Leaderboard = ({
             <spacer height="10px" />
             {/* Table Headers */}
             <hstack width="100%" padding="xsmall" alignment="center middle">
+                <spacer width="50px" />
                 <text size="medium" weight="bold" width="20%">Rank</text>
                 <text size="medium" weight="bold" width="50%">User</text>
                 <text size="medium" weight="bold" width="30%">Solves</text>
@@ -35,6 +37,7 @@ export const Leaderboard = ({
                 ) : (
                     leaderboard.map((entry, index) => (
                         <hstack key={index.toString()} width="100%" padding="xsmall" alignment="center middle">
+                            <spacer width="50px" />
                             <text size="medium" width="20%">{index + 1}</text>
                             <text size="medium" width="50%">{entry.username}</text>
                             <text size="medium" width="30%">{entry.solves}</text>

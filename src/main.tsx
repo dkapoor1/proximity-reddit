@@ -270,9 +270,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     useState(async () => {
       try {
         const leaderboardKey = 'leaderboard';
-        const rawData = await redis.hgetall(leaderboardKey);
-        console.log('Raw data:', rawData);
-  
+        const rawData = await redis.hgetall(leaderboardKey);  
         if (rawData) {
           const sortedData = Object.entries(rawData)
             .map(([username, solves]) => ({
@@ -281,7 +279,6 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
             }))
             .sort((a, b) => b.solves - a.solves)
             .slice(0, 10); // Take top 10 users
-          console.log('Sorted data:', sortedData);
           setLeaderboardData(sortedData);
         } else {
           setLeaderboardData([]); // Handle case when no data is available
@@ -321,15 +318,22 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
         {currentTitle.includes(`Proximity #${currGameIdState}`) ? (
           <button appearance='primary' onPress={showGuessForm}>Submit Guess</button>
         ) : (
-          <hstack>
-            <text>Target Word:</text>
-            <spacer width="5px" />
-            <text weight="bold">{gameHistory.target_word ?? ''}</text>
-            <text>, guessed by</text>
-            <spacer width="5px" />
-            <text weight="bold">u/{gameHistory.solved_by ?? ''}</text>
-            <text> </text>
-          </hstack>
+          <vstack>
+            <vstack>
+              <hstack>
+                <text>Target Word:</text>
+                <spacer width="5px" />
+                <text weight="bold">{gameHistory.target_word ?? ''}</text>
+              </hstack>
+            </vstack>
+            <vstack>
+              <hstack>
+                <text>Guessed by</text>
+                <spacer width="5px" />
+                <text weight="bold">u/{gameHistory.solved_by ?? ''}</text>
+              </hstack>
+            </vstack>
+          </vstack>
         )}
         <spacer grow />
         <button
