@@ -1,0 +1,10 @@
+brood
+tripod
+makeup
+notepad
+lever
+pillar
+giant
+cell
+locust
+screw
