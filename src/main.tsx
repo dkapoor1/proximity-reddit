@@ -171,7 +171,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
             preview: (
               <vstack padding="medium" cornerRadius="medium">
                 <text style="heading" size="medium">
-                  Loading a hand-crafted custom app…
+                  Loading Proximity, a global word guessing game…
                 </text>
               </vstack>
             ),
@@ -268,7 +268,16 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
 
   return (
     <vstack width="100%" height="100%">
+      <spacer height="5px" />
       <hstack width="100%" alignment="middle">
+        <spacer grow />
+        {currentTitle.includes(`Proximity #${currGameIdState}`) ? (
+          <button onPress={showGuessForm}>Submit Guess</button>
+        ) : (
+          <text>
+            Target Word: {gameHistory.target_word ?? ''}, guessed by {gameHistory.solved_by ?? ''}
+          </text>
+        )}
         <spacer grow />
         <button
           icon="info"
@@ -277,13 +286,6 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
         <spacer width="20px" />
       </hstack>
       <vstack alignment="center middle" grow>
-        {currentTitle.includes(`Proximity #${currGameIdState}`) ? (
-          <button onPress={showGuessForm}>Submit Guess</button>
-        ) : (
-          <text>
-            Target Word: {gameHistory.target_word ?? ''}, guessed by {gameHistory.solved_by ?? ''}
-          </text>
-        )}
         <spacer height="10px" />
           {currentTitle.includes(`Proximity #${currGameIdState}`)
           ? renderGuesses(top18)
@@ -311,7 +313,7 @@ Devvit.addMenuItem({
       preview: (
         <vstack padding="medium" cornerRadius="medium">
           <text style="heading" size="medium">
-            Loading a hand-crafted custom app…
+            Loading Proximity, a global word guessing game…
           </text>
         </vstack>
       ),
