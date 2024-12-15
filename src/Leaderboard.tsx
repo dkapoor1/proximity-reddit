@@ -8,7 +8,7 @@ export const Leaderboard = ({
     leaderboard: { username: string; solves: number }[];
 }) => {
     return (
-        <vstack width="100%" height="100%">
+        <vstack width="100%" height="100%" backgroundColor="#d8d6c9">
             <spacer height="5px" />
             <hstack width="100%" alignment="middle">
                 <spacer width="20px" />

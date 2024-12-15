@@ -3,7 +3,7 @@ import { Devvit } from '@devvit/public-api';
 
 export const HowToPlay = ({ onClose }: { onClose: () => void }) => {
   return (
-    <vstack width="100%" height="100%">
+    <vstack width="100%" height="100%" backgroundColor="#d8d6c9">
       <spacer height="5px" />
       <hstack width="100%" alignment="middle">
         <spacer grow />
