@@ -233,7 +233,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
 
   const renderGuesses = (guesses: { word: string; rank: number }[]) => {
     const filledGuesses = Array.from({ length: 18 }, (_, index) =>
-      guesses[index] || { word: '', rank: 0 }
+      guesses[index] || { word: '', rank: '' }
     );
   
     return (
@@ -241,26 +241,17 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
         <hstack>
           <vstack>
             {filledGuesses.slice(0, 6).map((item) => (
-              <StyledBox
-                content={item.word ? `${item.word}: ${item.rank}` : ''}
-                borderColor="#007bff"
-              />
+              <StyledBox word={item.word} rank={item.rank} />
             ))}
           </vstack>
           <vstack>
             {filledGuesses.slice(6, 12).map((item) => (
-              <StyledBox
-                content={item.word ? `${item.word}: ${item.rank}` : ''}
-                borderColor="#28a745"
-              />
+              <StyledBox word={item.word} rank={item.rank} />
             ))}
           </vstack>
           <vstack>
             {filledGuesses.slice(12, 18).map((item) => (
-              <StyledBox
-                content={item.word ? `${item.word}: ${item.rank}` : ''}
-                borderColor="#ff8800"
-              />
+              <StyledBox word={item.word} rank={item.rank} />
             ))}
           </vstack>
         </hstack>

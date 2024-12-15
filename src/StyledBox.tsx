@@ -1,7 +1,8 @@
 import { Devvit } from '@devvit/public-api';
 
 interface StyledBoxProps {
-  content: string;
+  word: string;
+  rank: number;
   width?: Devvit.Blocks.SizeString;
   height?: Devvit.Blocks.SizeString;
   borderColor?: string;
@@ -10,23 +11,24 @@ interface StyledBoxProps {
 
 export const StyledBox = (props: StyledBoxProps): JSX.Element => {
   const {
-    content,
+    word,
+    rank,
     width = '140px',
     height = '30px',
-    borderColor = '#000',
-    backgroundColor = '#fff',
+    borderColor = '#7d79d2',
   } = props;
 
   return (
-    <vstack
+    <hstack
       width={width}
       height={height}
-      backgroundColor={backgroundColor}
       borderColor={borderColor}
       padding="xsmall"
-      alignment="center middle"
+      alignment="middle"
     >
-      <text>{content}</text>
-    </vstack>
+      <text alignment="middle start">{word}</text>
+      <spacer grow />
+      <text alignment="middle end" size="xsmall">{rank}</text>
+    </hstack>
   );
 };
