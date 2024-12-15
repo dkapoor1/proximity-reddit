@@ -3,6 +3,7 @@ import { Devvit } from '@devvit/public-api';
 import { ChannelStatus } from '@devvit/public-api/types/realtime.js';
 import { StyledBox } from './StyledBox.js';
 import { HowToPlay } from './HowToPlay.js';
+import { Leaderboard } from './Leaderboard.js';
 
 Devvit.configure({
   redis: true,
@@ -28,6 +29,7 @@ function sessionId(): string {
 const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis, reddit, postId, ui}) => {
   const mySession = sessionId();
   const [showInfo, setShowInfo] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
 
   const [top18, setTop18] = useState<{ word: string; rank: number }[]>(async () => {
     const data = JSON.parse((await redis.get('top_18_guesses')) || '[]');
@@ -266,10 +268,21 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     );
   }
 
+  if (showLeaderboard) {
+    return (
+      <Leaderboard onClose={() => setShowLeaderboard(false)} />
+    );
+  }
+
   return (
     <vstack width="100%" height="100%">
       <spacer height="5px" />
       <hstack width="100%" alignment="middle">
+        <spacer width="10px" />
+          <button
+            icon="world"
+            onPress={() => setShowLeaderboard(true)}
+          />
         <spacer grow />
         {currentTitle.includes(`Proximity #${currGameIdState}`) ? (
           <button onPress={showGuessForm}>Submit Guess</button>
@@ -283,7 +296,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
           icon="info"
           onPress={() => setShowInfo(true)}
         />
-        <spacer width="20px" />
+        <spacer width="10px" />
       </hstack>
       <vstack alignment="center middle" grow>
         <spacer height="10px" />
