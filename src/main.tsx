@@ -187,23 +187,27 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
         const top18Stored: { word: string; rank: number }[] = JSON.parse(
           (await redis.get('top_18_guesses')) || '[]'
         );
-        if (top18Stored.length < 18) {
-          top18Stored.push({ word: guess, rank });
-        } else {
-          const maxRankIndex = top18Stored.reduce(
-            (maxIndex, item, index, array) =>
-              item.rank > array[maxIndex].rank ? index : maxIndex,
-            0
-          );
-          if (rank < top18Stored[maxRankIndex].rank) {
-            top18Stored[maxRankIndex] = { word: guess, rank };
+        if (!top18Stored.some(item => item.word === guess)) {
+          if (top18Stored.length < 18) {
+            top18Stored.push({ word: guess, rank });
+          } else {
+            const maxRankIndex = top18Stored.reduce(
+              (maxIndex, item, index, array) =>
+                item.rank > array[maxIndex].rank ? index : maxIndex,
+              0
+            );
+            if (rank < top18Stored[maxRankIndex].rank) {
+              top18Stored[maxRankIndex] = { word: guess, rank };
+            }
           }
+          top18Stored.sort((a, b) => a.rank - b.rank);
+          await redis.set('top_18_guesses', JSON.stringify(top18Stored));
+          setTop18(top18Stored);
+          await top18Channel.send({ top18: top18Stored, session: mySession });
+          console.log('Updated Top 18 Guesses:', top18);
+        } else {
+          ui.showToast({ text: `"${guess}" is already in the Top 18.` });
         }
-        top18Stored.sort((a, b) => a.rank - b.rank);
-        await redis.set('top_18_guesses', JSON.stringify(top18Stored));
-        setTop18(top18Stored);
-        await top18Channel.send({ top18: top18Stored, session: mySession });
-        console.log('Updated Top 18 Guesses:', top18);
       }
     }
   );
