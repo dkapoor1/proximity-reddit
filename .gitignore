@@ -8,3 +8,4 @@ yarn-error.log*
 
 word2vec-env/GoogleNews-vectors-negative300.bin
 src/word-lists
+word2vec-env/puzzles
