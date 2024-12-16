@@ -14,11 +14,21 @@ export const StyledBox = (props: StyledBoxProps): JSX.Element => {
   const {
     word,
     rank,
-    minWidth = '80px',
+    minWidth = '130px',
     maxWidth = '130px',
     height = '30px',
-    borderColor = '#7d79d2',
+    borderColor = '#000000',
+    
   } = props;
+
+  const getBackgroundColor = (rank: number): string => {
+    if (rank == 0) return '#d8d6c9';
+    if (rank < 200) return '#60d394';
+    if (rank < 1000) return '#aaf683';
+    if (rank < 3000) return '#ffd97d';
+    if (rank < 5000) return '#ff9b85';
+    return '#ee6055';
+  };
 
   return (
     <hstack
@@ -28,10 +38,12 @@ export const StyledBox = (props: StyledBoxProps): JSX.Element => {
       borderColor={borderColor}
       padding="xsmall"
       alignment="middle"
+      cornerRadius = 'medium'
+      backgroundColor={getBackgroundColor(rank)}
     >
-      <text alignment="middle start">{word}</text>
+      <text alignment="middle start" color='black'>{word}</text>
       <spacer grow />
-      <text alignment="middle end" size="xsmall">{rank}</text>
+      <text alignment="middle end" size="xsmall" color='black'>{rank}</text>
     </hstack>
   );
 };

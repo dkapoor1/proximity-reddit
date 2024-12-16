@@ -238,17 +238,19 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
   
     return (
         <hstack>
-          <vstack>
+          <vstack gap="small">
             {filledGuesses.slice(0, 6).map((item) => (
               <StyledBox word={item.word} rank={item.rank} />
             ))}
           </vstack>
-          <vstack>
+          <spacer width="8px" />
+          <vstack gap="small">
             {filledGuesses.slice(6, 12).map((item) => (
               <StyledBox word={item.word} rank={item.rank} />
             ))}
           </vstack>
-          <vstack>
+          <spacer width="8px" />
+          <vstack gap="small">
             {filledGuesses.slice(12, 18).map((item) => (
               <StyledBox word={item.word} rank={item.rank} />
             ))}
@@ -310,7 +312,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
       <spacer height="10px" />
       <hstack width="100%" alignment="middle">
         <spacer width="10px" />
-          <button
+          <button appearance='media'
             icon="world"
             onPress={() => setShowLeaderboard(true)}
           />
@@ -321,29 +323,29 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
           <vstack>
             <vstack>
               <hstack>
-                <text>Target Word:</text>
+                <text color='black'>Target Word:</text>
                 <spacer width="5px" />
-                <text weight="bold">{gameHistory.target_word ?? ''}</text>
+                <text weight="bold" color='black'>{gameHistory.target_word ?? ''}</text>
               </hstack>
             </vstack>
             <vstack>
               <hstack>
-                <text>Guessed by</text>
+                <text color='black'>Guessed by</text>
                 <spacer width="5px" />
-                <text weight="bold">u/{gameHistory.solved_by ?? ''}</text>
+                <text weight="bold" color='black'>u/{gameHistory.solved_by ?? ''}</text>
               </hstack>
             </vstack>
           </vstack>
         )}
         <spacer grow />
-        <button
+        <button appearance='media'
           icon="info"
           onPress={() => setShowInfo(true)}
         />
         <spacer width="10px" />
       </hstack>
       <vstack alignment="center bottom" grow>
-        <text weight="bold">Top 18 Guesses (word, rank)</text>
+        <text weight="bold" color='black'>Top 18 Guesses (word, rank)</text>
       </vstack>
       <vstack alignment="center middle" grow>
         <spacer height="10px" />
