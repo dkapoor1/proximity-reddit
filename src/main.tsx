@@ -9,7 +9,7 @@ Devvit.configure({
   redis: true,
   redditAPI: true,
   realtime: true,
-  http: true,
+  // http: true,
 });
 
 type RealtimeMessage = {
@@ -107,20 +107,20 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
   async function updateRankedWordList(gameId: number) {
     const s3Url = `https://proximity-game.s3.us-east-1.amazonaws.com/proximity_devvit_${gameId}.json`;
 
-    try {
-      // Attempt to fetch from S3
-      const response = await fetch(s3Url);
-      if (!response.ok) throw new Error(`Failed to fetch from S3 for Game ID ${gameId}`);
+    // try {
+    //   // Attempt to fetch from S3
+    //   const response = await fetch(s3Url);
+    //   if (!response.ok) throw new Error(`Failed to fetch from S3 for Game ID ${gameId}`);
   
-      const data = await response.json();
-      if (data.rankings && Array.isArray(data.rankings)) {
-        await redis.set('ranked_word_list', JSON.stringify(data.rankings));
-        console.log(`Ranked word list updated from S3 for Game ID ${gameId}`);
-      } else {
-        throw new Error('Invalid word list format from S3');
-      }
-    } catch (s3Error) {
-      console.error(`S3 fetch error: ${s3Error}`);
+    //   const data = await response.json();
+    //   if (data.rankings && Array.isArray(data.rankings)) {
+    //     await redis.set('ranked_word_list', JSON.stringify(data.rankings));
+    //     console.log(`Ranked word list updated from S3 for Game ID ${gameId}`);
+    //   } else {
+    //     throw new Error('Invalid word list format from S3');
+    //   }
+    // } catch (s3Error) {
+    //   console.error(`S3 fetch error: ${s3Error}`);
   
       try {
         // Attempt to load from local file
@@ -135,7 +135,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
         console.error(`Local fetch error: ${localError}`);
         ui.showToast({ text: `Failed to update ranked word list for Game ID ${gameId} from both S3 and local file.` });
       }
-    }
+    // }
   }
 
   const handleGameSolve = async (rankedWordList: string[]) => {
