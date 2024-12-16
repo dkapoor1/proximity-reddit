@@ -15,6 +15,12 @@ Devvit.configure({
 type RealtimeMessage = {
   top18: { word: string; rank: number }[];
   session: string;
+  gameHistory?: {
+    solved_by: string;
+    target_word: string;
+    top_18: { word: string; rank: number }[];
+  };
+  currGameId?: string;
 };
 
 function sessionId(): string {
@@ -63,18 +69,25 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     onMessage: (msg) => {
       if (msg.session !== mySession) {
         setTop18(msg.top18);
+        if (msg.gameHistory) {
+          setGameHistory(msg.gameHistory);
+        }
+        if (msg.currGameId) {
+          setCurrGameIdState(msg.currGameId);
+        }
       }
     },
-    onSubscribed: async () => {},
+    onSubscribed: async () => {
+      console.log('Subscribed to game state updates');
+    },
   });
-  top18Channel.subscribe();
+  top18Channel.subscribe();  
 
   async function initializeGame() {
     const currGameId = await redis.get('curr_game_id');
     if (!currGameId) {
       await redis.set('curr_game_id', '1');
     }
-    // await updateRankedWordList(parseInt(currGameId || '1', 10));
   }
 
   // Increment curr_game_id and update ranked_word_list
@@ -83,7 +96,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     const newGameId = (parseInt(currGameId || '1', 10) + 1).toString();
     await redis.set('curr_game_id', newGameId);
     await updateRankedWordList(parseInt(newGameId, 10));
-    ui.showToast({ text: `Game ID updated to ${newGameId}` });
+    ui.showToast({ text: `Proximty #${newGameId} released!` });
   }
 
   // Fetch and update ranked_word_list from S3
@@ -136,9 +149,14 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     await incrementGameId();
     const newGameId = (await redis.get('curr_game_id')) || '1';
     setCurrGameIdState(newGameId)
+    await top18Channel.send({
+      session: mySession,
+      top18: [],
+      gameHistory,
+      currGameId: newGameId,
+    });
+
     await redis.del('top_18_guesses'); // Clear top 18 guesses
-    // setTop18([]);
-    // await top18Channel.send({ top18: [], session: mySession });
     const currentSubreddit = await reddit.getCurrentSubreddit();
     await reddit.submitPost({
       title: `Proximity #${newGameId}`,
@@ -220,7 +238,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
           await redis.set('top_18_guesses', JSON.stringify(top18Stored));
           setTop18(top18Stored);
           await top18Channel.send({ top18: top18Stored, session: mySession });
-          console.log('Updated Top 18 Guesses:', top18);
+          console.log('Updated Top 18 Guesses:', top18Stored);
         } else {
           ui.showToast({ text: `"${guess}" is already in the Top 18.` });
         }
