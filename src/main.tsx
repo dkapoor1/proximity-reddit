@@ -137,8 +137,8 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     const newGameId = (await redis.get('curr_game_id')) || '1';
     setCurrGameIdState(newGameId)
     await redis.del('top_18_guesses'); // Clear top 18 guesses
-    setTop18([]);
-    await top18Channel.send({ top18: [], session: mySession });
+    // setTop18([]);
+    // await top18Channel.send({ top18: [], session: mySession });
     const currentSubreddit = await reddit.getCurrentSubreddit();
     await reddit.submitPost({
       title: `Proximity #${newGameId}`,
