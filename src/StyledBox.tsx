@@ -14,8 +14,8 @@ export const StyledBox = (props: StyledBoxProps): JSX.Element => {
   const {
     word,
     rank,
-    minWidth = '130px',
-    maxWidth = '130px',
+    minWidth = '120px',
+    maxWidth = '120px',
     height = '30px',
     borderColor = '#000000',
     

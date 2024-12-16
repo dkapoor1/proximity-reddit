@@ -121,6 +121,40 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     }
   }
 
+  const handleGameSolve = async (rankedWordList: string[]) => {
+    const currGameId = await redis.get('curr_game_id');
+    const top18Guesses = JSON.parse((await redis.get('top_18_guesses')) || '[]');
+    const gameHistory = {
+      solved_by: currentUsername,
+      target_word: rankedWordList[0],
+      top_18: top18Guesses,
+    };
+    const leaderboardKey = 'leaderboard';
+    await redis.hincrby(leaderboardKey, currentUsername, 1);
+    await redis.set(`game_history_${currGameId}`, JSON.stringify(gameHistory));
+    setGameHistory(gameHistory);
+    await incrementGameId();
+    const newGameId = (await redis.get('curr_game_id')) || '1';
+    setCurrGameIdState(newGameId)
+    await redis.del('top_18_guesses'); // Clear top 18 guesses
+    setTop18([]);
+    await top18Channel.send({ top18: [], session: mySession });
+    const currentSubreddit = await reddit.getCurrentSubreddit();
+    await reddit.submitPost({
+      title: `Proximity #${newGameId}`,
+      subredditName: currentSubreddit.name,
+      preview: (
+        <vstack padding="medium" cornerRadius="medium">
+          <text style="heading" size="medium">
+            Loading Proximity, a global word guessing game…
+          </text>
+        </vstack>
+      ),
+    });
+    ui.showToast({ text: `Congratulations! You've guessed the secret word.` });
+    return;
+  };
+
   const guessForm = useForm(
     {
       fields: [
@@ -140,6 +174,16 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
         ui.showToast({ text: "You didn't enter a guess!" });
         return;
       }
+      const currentTitleIdMatch = currentTitle.match(/Proximity #(\d+)/);
+      const currentTitleId = currentTitleIdMatch ? currentTitleIdMatch[1] : '';
+      const currGameId = await redis.get('curr_game_id');
+      if (currentTitleId !== currGameId) {
+        ui.showToast({
+            text: `This game has already been solved.`,
+        });
+        return;
+      }      
+
       const rankedWordList: string[] = JSON.parse(
         (await redis.get('ranked_word_list')) || '[]'
       );
@@ -153,35 +197,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
         ui.showToast({ text: `${guess} rank: ${rank}` });
 
         if (rank === 1) {
-          const currGameId = await redis.get('curr_game_id');
-          const top18Guesses = JSON.parse((await redis.get('top_18_guesses')) || '[]');
-          const gameHistory = {
-            solved_by: currentUsername,
-            target_word: rankedWordList[0],
-            top_18: top18Guesses,
-          };
-          const leaderboardKey = 'leaderboard';
-          await redis.hincrby(leaderboardKey, currentUsername, 1);
-          await redis.set(`game_history_${currGameId}`, JSON.stringify(gameHistory));
-          await incrementGameId();
-          const newGameId = await redis.get('curr_game_id');
-          await redis.del('top_18_guesses'); // Clear top 18 guesses
-          setTop18([]);
-          await top18Channel.send({ top18: [], session: mySession });
-          const currentSubreddit = await reddit.getCurrentSubreddit();
-          await reddit.submitPost({
-            title: `Proximity #${newGameId}`,
-            subredditName: currentSubreddit.name,
-            preview: (
-              <vstack padding="medium" cornerRadius="medium">
-                <text style="heading" size="medium">
-                  Loading Proximity, a global word guessing game…
-                </text>
-              </vstack>
-            ),
-          });
-          ui.showToast({ text: `Congratulations! You've guessed the target word.` });
-          return;
+          handleGameSolve(rankedWordList)
         }
 
         const top18Stored: { word: string; rank: number }[] = JSON.parse(
@@ -222,9 +238,9 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     setTop18(top18Data);
   });
 
-  const currentTitleIdMatch = currentTitle.match(/Proximity #(\d+)/);
-  const currentTitleId = currentTitleIdMatch ? currentTitleIdMatch[1] : '';
   useState(async () => {
+    const currentTitleIdMatch = currentTitle.match(/Proximity #(\d+)/);
+    const currentTitleId = currentTitleIdMatch ? currentTitleIdMatch[1] : '';
     if (!currentTitle.includes(`Proximity #${currGameIdState}`) && currentTitleId) {
       const historyData = JSON.parse((await redis.get(`game_history_${currentTitleId}`)) || '{}');
       setGameHistory(historyData);
@@ -323,7 +339,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
           <vstack>
             <vstack>
               <hstack>
-                <text color='black'>Target Word:</text>
+                <text color='black'>Secret Word:</text>
                 <spacer width="5px" />
                 <text weight="bold" color='black'>{gameHistory.target_word ?? ''}</text>
               </hstack>
