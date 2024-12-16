@@ -21,6 +21,7 @@ type RealtimeMessage = {
     top_18: { word: string; rank: number }[];
   };
   currGameId?: string;
+  toastMessage?: string;
 };
 
 function sessionId(): string {
@@ -74,6 +75,9 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
         }
         if (msg.currGameId) {
           setCurrGameIdState(msg.currGameId);
+        }
+        if (msg.toastMessage) {
+          ui.showToast({ text: msg.toastMessage });
         }
       }
     },
@@ -154,6 +158,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
       top18: [],
       gameHistory,
       currGameId: newGameId,
+      toastMessage: `Proximity #${currGameId} solved by u/${currentUsername}`,
     });
 
     await redis.del('top_18_guesses'); // Clear top 18 guesses
