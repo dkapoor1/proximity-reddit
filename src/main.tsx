@@ -9,7 +9,7 @@ Devvit.configure({
   redis: true,
   redditAPI: true,
   realtime: true,
-  // http: true,
+  http: true,
 });
 
 type RealtimeMessage = {
@@ -68,7 +68,8 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
   const top18Channel = useChannel<RealtimeMessage>({
     name: 'top18_state',
     onMessage: (msg) => {
-      if (msg.session !== mySession) {
+      if (msg.session !== mySession && msg.currGameId === currGameIdState) {
+        console.log(currGameIdState)
         setTop18(msg.top18);
         if (msg.gameHistory) {
           setGameHistory(msg.gameHistory);
@@ -87,11 +88,51 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
   });
   top18Channel.subscribe();  
 
+  async function loadSolvedGameHistory(currentTitleId: string) {
+    const solvedGameHistory = JSON.parse(
+      (await redis.get(`game_history_${currentTitleId}`)) || '{}'
+    );
+    setGameHistory(solvedGameHistory);
+    const currentGameId = await redis.get('curr_game_id');
+    setCurrGameIdState(currentGameId as string); // Update state to trigger re-render
+  }
+
   async function initializeGame() {
     const currGameId = await redis.get('curr_game_id');
     if (!currGameId) {
       await redis.set('curr_game_id', '1');
     }
+
+    const rankedWordList = await redis.get('ranked_word_list');
+    if (!rankedWordList || JSON.parse(rankedWordList).length === 0) {
+      console.log('ranked_word_list is empty or null. Triggering update.');
+      await updateRankedWordList(parseInt(currGameId || '1', 10));
+    }
+    
+    // const postFlagKey = 'post_38_created';
+    // const hasPostBeenCreated = await redis.get(postFlagKey);
+    // if (!hasPostBeenCreated) {
+    //   await redis.del('top_18_guesses'); // Clear top 18 guesses
+    //   const currentSubreddit = await reddit.getCurrentSubreddit();
+    //   // Submit the post
+    //   await reddit.submitPost({
+    //     title: `Proximity #38`,
+    //     subredditName: currentSubreddit.name,
+    //     preview: (
+    //       <vstack padding="medium" cornerRadius="medium">
+    //         <text style="heading" size="medium">
+    //           Loading Proximity, a global word guessing game…
+    //         </text>
+    //       </vstack>
+    //     ),
+    //   });
+    //   // Set the flag in Redis to ensure this post is only created once
+    //   await redis.set(postFlagKey, 'true');
+    //   console.log('Proximity #38 post created successfully.');
+    // } else {
+    //   console.log('Proximity #38 post already exists.');
+    // }
+  
   }
 
   // Increment curr_game_id and update ranked_word_list
@@ -105,37 +146,36 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
 
   // Fetch and update ranked_word_list from S3
   async function updateRankedWordList(gameId: number) {
-    const s3Url = `https://proximity-game.s3.us-east-1.amazonaws.com/proximity_devvit_${gameId}.json`;
+    try {
+      // Attempt to load from local file
+      const data = await import(`./word-lists/proximity_devvit_${gameId}.json`);
+      if (data.rankings && Array.isArray(data.rankings)) {
+        await redis.set('ranked_word_list', JSON.stringify(data.rankings));
+        console.log(`Ranked word list updated from local file for Game ID ${gameId}`);
+      } else {
+        throw new Error('Invalid word list format from local file');
+      }
+    } catch (localError) {
+      console.error(`Local fetch error: ${localError}`);
 
-    // try {
-    //   // Attempt to fetch from S3
-    //   const response = await fetch(s3Url);
-    //   if (!response.ok) throw new Error(`Failed to fetch from S3 for Game ID ${gameId}`);
-  
-    //   const data = await response.json();
-    //   if (data.rankings && Array.isArray(data.rankings)) {
-    //     await redis.set('ranked_word_list', JSON.stringify(data.rankings));
-    //     console.log(`Ranked word list updated from S3 for Game ID ${gameId}`);
-    //   } else {
-    //     throw new Error('Invalid word list format from S3');
-    //   }
-    // } catch (s3Error) {
-    //   console.error(`S3 fetch error: ${s3Error}`);
-  
+      const s3Url = `https://proximity-game.s3.us-east-1.amazonaws.com/proximity_devvit_${gameId}.json`;
       try {
-        // Attempt to load from local file
-        const data = await import(`./word-lists/proximity_devvit_${gameId}.json`);
+        // Attempt to fetch from S3
+        console.log("attempting s3 fetch")
+        const response = await fetch(s3Url);
+        if (!response.ok) throw new Error(`Failed to fetch from S3 for Game ID ${gameId}`);
+    
+        const data = await response.json();
         if (data.rankings && Array.isArray(data.rankings)) {
           await redis.set('ranked_word_list', JSON.stringify(data.rankings));
-          console.log(`Ranked word list updated from local file for Game ID ${gameId}`);
+          console.log(`Ranked word list updated from S3 for Game ID ${gameId}`);
         } else {
-          throw new Error('Invalid word list format from local file');
+          throw new Error('Invalid word list format from S3');
         }
-      } catch (localError) {
-        console.error(`Local fetch error: ${localError}`);
-        ui.showToast({ text: `Failed to update ranked word list for Game ID ${gameId} from both S3 and local file.` });
+      } catch (s3Error) {
+        console.error(`S3 fetch error: ${s3Error}`);
       }
-    // }
+    }
   }
 
   const handleGameSolve = async (rankedWordList: string[]) => {
@@ -175,6 +215,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
       ),
     });
     ui.showToast({ text: `Congratulations! You've guessed the secret word.` });
+    await redis.set(`post_created_for_game_${newGameId}`, 'true');
     return;
   };
 
@@ -204,6 +245,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
         ui.showToast({
             text: `This game has already been solved.`,
         });
+        await loadSolvedGameHistory(currentTitleId);
         return;
       }      
 
@@ -242,7 +284,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
           top18Stored.sort((a, b) => a.rank - b.rank);
           await redis.set('top_18_guesses', JSON.stringify(top18Stored));
           setTop18(top18Stored);
-          await top18Channel.send({ top18: top18Stored, session: mySession });
+          await top18Channel.send({ top18: top18Stored, session: mySession, currGameId: currGameId });
           console.log('Updated Top 18 Guesses:', top18Stored);
         } else {
           ui.showToast({ text: `"${guess}" is already in the Top 18.` });
@@ -265,8 +307,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     const currentTitleIdMatch = currentTitle.match(/Proximity #(\d+)/);
     const currentTitleId = currentTitleIdMatch ? currentTitleIdMatch[1] : '';
     if (!currentTitle.includes(`Proximity #${currGameIdState}`) && currentTitleId) {
-      const historyData = JSON.parse((await redis.get(`game_history_${currentTitleId}`)) || '{}');
-      setGameHistory(historyData);
+      await loadSolvedGameHistory(currentTitleId);
     }
   });
 
@@ -319,7 +360,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
               solves: parseInt(solves as string, 10),
             }))
             .sort((a, b) => b.solves - a.solves)
-            .slice(0, 10); // Take top 10 users
+            .slice(0, 8); // Take top 8 users
           setLeaderboardData(sortedData);
         } else {
           setLeaderboardData([]); // Handle case when no data is available
