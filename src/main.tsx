@@ -4,6 +4,7 @@ import { ChannelStatus } from '@devvit/public-api/types/realtime.js';
 import { StyledBox } from './StyledBox.js';
 import { HowToPlay } from './HowToPlay.js';
 import { Leaderboard } from './Leaderboard.js';
+import './MenuItem.tsx';
 
 Devvit.configure({
   redis: true,
@@ -43,7 +44,6 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     return data;
   });
 
-  // Added states for currentTitle and currGameId
   const [currentTitle, setCurrentTitle] = useState<string>(async () => {
     if (!postId) return '';
     const post = await reddit.getPostById(postId);
@@ -441,27 +441,6 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
 Devvit.addCustomPostType({
   name: 'Proximity',
   render: App,
-});
-
-Devvit.addMenuItem({
-  location: 'subreddit',
-  label: 'Proximity Game',
-  onPress: async (_, context) => {
-    const { reddit, ui } = context;
-    const currentSubreddit = await reddit.getCurrentSubreddit();
-    await reddit.submitPost({
-      title: 'Proximity #1',
-      subredditName: currentSubreddit.name,
-      preview: (
-        <vstack padding="medium" cornerRadius="medium">
-          <text style="heading" size="medium">
-            Loading Proximity, a global word guessing game…
-          </text>
-        </vstack>
-      ),
-    });
-    ui.showToast(`Created custom post in r/${currentSubreddit.name}!`);
-  },
 });
 
 export default Devvit;
