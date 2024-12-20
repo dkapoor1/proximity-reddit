@@ -50,9 +50,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     return post.title || '';
   });
 
-  const [currGameIdState, setCurrGameIdState] = useState<string>(async () => {
-    return (await redis.get('curr_game_id')) || '1';
-  });
+  const [currGameIdState, setCurrGameIdState] = useState<string>('00000');
 
   const [gameHistory, setGameHistory] = useState<{
     solved_by?: string;
@@ -69,7 +67,8 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     name: 'top18_state',
     onMessage: (msg) => {
       if (msg.session !== mySession && msg.currGameId === currGameIdState) {
-        console.log(currGameIdState)
+        // console.log('currGameIdState:', currGameIdState);
+        // console.log('msg:', msg )
         setTop18(msg.top18);
         if (msg.gameHistory) {
           setGameHistory(msg.gameHistory);
@@ -99,8 +98,9 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
 
   async function initializeGame() {
     const currGameId = await redis.get('curr_game_id');
+    setCurrGameIdState(currGameId || '00000');
     if (!currGameId) {
-      await redis.set('curr_game_id', '1');
+      await redis.set('curr_game_id', '00000');
     }
 
     const rankedWordList = await redis.get('ranked_word_list');
@@ -109,14 +109,14 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
       await updateRankedWordList(parseInt(currGameId || '1', 10));
     }
     
-    // const postFlagKey = 'post_38_created';
+    // const postFlagKey = 'post_125_created';
     // const hasPostBeenCreated = await redis.get(postFlagKey);
     // if (!hasPostBeenCreated) {
     //   await redis.del('top_18_guesses'); // Clear top 18 guesses
     //   const currentSubreddit = await reddit.getCurrentSubreddit();
     //   // Submit the post
     //   await reddit.submitPost({
-    //     title: `Proximity #38`,
+    //     title: `Proximity #125`,
     //     subredditName: currentSubreddit.name,
     //     preview: (
     //       <vstack padding="medium" cornerRadius="medium">
@@ -128,40 +128,28 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     //   });
     //   // Set the flag in Redis to ensure this post is only created once
     //   await redis.set(postFlagKey, 'true');
-    //   console.log('Proximity #38 post created successfully.');
+    //   console.log('Proximity #121 post created successfully.');
     // } else {
-    //   console.log('Proximity #38 post already exists.');
+    //   console.log('Proximity #121 post already exists.');
     // }
   
   }
 
-  // Increment curr_game_id and update ranked_word_list
-  async function incrementGameId() {
-    const currGameId = await redis.get('curr_game_id');
-    const newGameId = (parseInt(currGameId || '1', 10) + 1).toString();
-    await redis.set('curr_game_id', newGameId);
-    await updateRankedWordList(parseInt(newGameId, 10));
-    ui.showToast({ text: `Proximty #${newGameId} released!` });
-  }
-
-  // Fetch and update ranked_word_list from S3
   async function updateRankedWordList(gameId: number) {
-    try {
-      // Attempt to load from local file
-      const data = await import(`./word-lists/proximity_devvit_${gameId}.json`);
-      if (data.rankings && Array.isArray(data.rankings)) {
-        await redis.set('ranked_word_list', JSON.stringify(data.rankings));
-        console.log(`Ranked word list updated from local file for Game ID ${gameId}`);
-      } else {
-        throw new Error('Invalid word list format from local file');
-      }
-    } catch (localError) {
-      console.error(`Local fetch error: ${localError}`);
+    // try {
+    //   // Attempt to load from local file
+    //   const data = await import(`./word-lists/proximity_devvit_${gameId}.json`);
+    //   if (data.rankings && Array.isArray(data.rankings)) {
+    //     await redis.set('ranked_word_list', JSON.stringify(data.rankings));
+    //     console.log(`Ranked word list updated from local file for Game ID ${gameId}`);
+    //   } else {
+    //     throw new Error('Invalid word list format from local file');
+    //   }
+    // } catch (localError) {
+    //   console.error(`Local fetch error: ${localError}`);
 
       const s3Url = `https://proximity-game.s3.us-east-1.amazonaws.com/proximity_devvit_${gameId}.json`;
       try {
-        // Attempt to fetch from S3
-        console.log("attempting s3 fetch")
         const response = await fetch(s3Url);
         if (!response.ok) throw new Error(`Failed to fetch from S3 for Game ID ${gameId}`);
     
@@ -175,31 +163,21 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
       } catch (s3Error) {
         console.error(`S3 fetch error: ${s3Error}`);
       }
-    }
+    // }
   }
 
-  const handleGameSolve = async (rankedWordList: string[]) => {
-    const currGameId = await redis.get('curr_game_id');
-    const top18Guesses = JSON.parse((await redis.get('top_18_guesses')) || '[]');
+  const handleGameSolve = async (rankedWordList: string[], currGameId: string, top18Stored: { word: string; rank: number }[]) => {
     const gameHistory = {
       solved_by: currentUsername,
       target_word: rankedWordList[0],
-      top_18: top18Guesses,
+      top_18: top18Stored,
     };
-    const leaderboardKey = 'leaderboard';
-    await redis.hincrby(leaderboardKey, currentUsername, 1);
+
     await redis.set(`game_history_${currGameId}`, JSON.stringify(gameHistory));
     setGameHistory(gameHistory);
-    await incrementGameId();
-    const newGameId = (await redis.get('curr_game_id')) || '1';
-    setCurrGameIdState(newGameId)
-    await top18Channel.send({
-      session: mySession,
-      top18: [],
-      gameHistory,
-      currGameId: newGameId,
-      toastMessage: `Proximity #${currGameId} solved by u/${currentUsername}`,
-    });
+    const newGameId = (parseInt(currGameId || '1', 10) + 1).toString();
+    await redis.set('curr_game_id', newGameId);
+    await updateRankedWordList(parseInt(newGameId, 10));
 
     await redis.del('top_18_guesses'); // Clear top 18 guesses
     const currentSubreddit = await reddit.getCurrentSubreddit();
@@ -214,8 +192,22 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
         </vstack>
       ),
     });
-    ui.showToast({ text: `Congratulations! You've guessed the secret word.` });
     await redis.set(`post_created_for_game_${newGameId}`, 'true');
+    // console.log("sending to top18 channel")
+    setCurrGameIdState(newGameId)
+
+    await top18Channel.send({
+      session: mySession,
+      top18: [],
+      gameHistory,
+      currGameId: newGameId,
+      toastMessage: `Proximity #${currGameId} solved by u/${currentUsername}`,
+    });
+    // console.log("setting leaderboard")
+    const leaderboardKey = 'leaderboard';
+    await redis.hincrby(leaderboardKey, currentUsername, 1);
+    // console.log("displaying toast")
+    ui.showToast({ text: `Congratulations! You've guessed the secret word.` });
     return;
   };
 
@@ -260,14 +252,14 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
       } else {
         const rank = wordIndex + 1;
         ui.showToast({ text: `${guess} rank: ${rank}` });
-
-        if (rank === 1) {
-          handleGameSolve(rankedWordList)
-        }
-
         const top18Stored: { word: string; rank: number }[] = JSON.parse(
           (await redis.get('top_18_guesses')) || '[]'
         );
+
+        if (rank === 1) {
+          handleGameSolve(rankedWordList, currGameId, top18Stored)
+        }
+
         if (!top18Stored.some(item => item.word === guess)) {
           if (top18Stored.length < 18) {
             top18Stored.push({ word: guess, rank });
@@ -348,7 +340,6 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
   if (showLeaderboard) {
     const [leaderboardData, setLeaderboardData] = useState<{ username: string; solves: number }[] | null>(null);
   
-    // Fetch leaderboard data once before rendering
     useState(async () => {
       try {
         const leaderboardKey = 'leaderboard';
@@ -397,7 +388,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
             onPress={() => setShowLeaderboard(true)}
           />
         <spacer grow />
-        {currentTitle.includes(`Proximity #${currGameIdState}`) ? (
+        {!gameHistory.solved_by ? (
           <button appearance='primary' onPress={showGuessForm}>Submit Guess</button>
         ) : (
           <vstack>
