@@ -50,7 +50,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     return post.title || '';
   });
 
-  const [currGameIdState, setCurrGameIdState] = useState<string>('00000');
+  const [currGameIdState, setCurrGameIdState] = useState<string>('1');
 
   const [gameHistory, setGameHistory] = useState<{
     solved_by?: string;
@@ -98,9 +98,9 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
 
   async function initializeGame() {
     const currGameId = await redis.get('curr_game_id');
-    setCurrGameIdState(currGameId || '00000');
+    setCurrGameIdState(currGameId || '1');
     if (!currGameId) {
-      await redis.set('curr_game_id', '00000');
+      await redis.set('curr_game_id', '1');
     }
 
     const rankedWordList = await redis.get('ranked_word_list');
@@ -109,14 +109,14 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
       await updateRankedWordList(parseInt(currGameId || '1', 10));
     }
     
-    // const postFlagKey = 'post_125_created';
+    // const postFlagKey = 'post_292_created';
     // const hasPostBeenCreated = await redis.get(postFlagKey);
     // if (!hasPostBeenCreated) {
     //   await redis.del('top_18_guesses'); // Clear top 18 guesses
     //   const currentSubreddit = await reddit.getCurrentSubreddit();
     //   // Submit the post
     //   await reddit.submitPost({
-    //     title: `Proximity #125`,
+    //     title: `Proximity #292`,
     //     subredditName: currentSubreddit.name,
     //     preview: (
     //       <vstack padding="medium" cornerRadius="medium">
@@ -128,9 +128,9 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     //   });
     //   // Set the flag in Redis to ensure this post is only created once
     //   await redis.set(postFlagKey, 'true');
-    //   console.log('Proximity #121 post created successfully.');
+    //   console.log('Proximity post created successfully.');
     // } else {
-    //   console.log('Proximity #121 post already exists.');
+    //   console.log('Proximity post already exists.');
     // }
   
   }
@@ -181,6 +181,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
 
     await redis.del('top_18_guesses'); // Clear top 18 guesses
     const currentSubreddit = await reddit.getCurrentSubreddit();
+    await redis.set('post_creation_pending', 'true')
     await reddit.submitPost({
       title: `Proximity #${newGameId}`,
       subredditName: currentSubreddit.name,
@@ -192,7 +193,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
         </vstack>
       ),
     });
-    await redis.set(`post_created_for_game_${newGameId}`, 'true');
+    await redis.set('post_creation_pending', 'false')
     // console.log("sending to top18 channel")
     setCurrGameIdState(newGameId)
 
