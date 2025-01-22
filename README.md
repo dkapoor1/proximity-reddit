@@ -34,24 +34,10 @@ The core files for the Proximity app, built with [Devvit](https://developers.red
 
 ---
 
-## 👨‍💻 Devvit & the Reddit Hackathon
-
-This app was built for the [Reddit Games and Puzzles Hackathon](https://redditgamesandpuzzles.devpost.com/) using **Devvit**, a framework for creating dynamic Reddit experiences.
-
-With **Devvit**, we:
-- Created a custom post type for the game.
-- Enabled real-time updates for players worldwide.
-- Hooked into Reddit APIs for a seamless in-app experience.
-
----
-
-## ❤️ Why You'll Love Proximity
-
-- **Accessible**: Play right from Reddit—no downloads or installations needed!
-- **Social**: Compete with Redditors globally and see live rankings. 
-- **Challenging**:  Guessing the secret word isn't easy. But your fellow Redditors should help get you there.
-
----
-
 ## 🎮 Ready to Play?
 Head to [r/playproximity](https://reddit.com/r/playproximity/) and start guessing!
+
+## Helpful Commands
+- First upload new version with `devvit upload`
+- To run on test subreddit `devvit playtest r/testproximity`
+- To deploy to production subreddit ``
