@@ -38,6 +38,6 @@ The core files for the Proximity app, built with [Devvit](https://developers.red
 Head to [r/playproximity](https://reddit.com/r/playproximity/) and start guessing!
 
 ## Helpful Commands
-- First upload new version with `devvit upload`
+- Upload new version with `devvit upload`
 - To run on test subreddit `devvit playtest r/testproximity`
 - To deploy to production subreddit ``
