@@ -1,5 +1,5 @@
 // main.tsx
-import { Devvit } from '@devvit/public-api';
+import { Devvit, useInterval } from '@devvit/public-api';
 import { ChannelStatus } from '@devvit/public-api/types/realtime.js';
 import { StyledBox } from './StyledBox.js';
 import { HowToPlay } from './HowToPlay.js';
@@ -63,6 +63,9 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     return currentUser?.username || 'anonymous'; 
   });  
 
+  const [disableGuessButton, setDisableGuessButton] = useState(false);
+  const [countdown, setCountdown] = useState(5);
+  
   const top18Channel = useChannel<RealtimeMessage>({
     name: 'top18_state',
     onMessage: (msg) => {
@@ -198,6 +201,17 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     return;
   };
 
+  const { start, stop } = useInterval(() => {
+    setCountdown((prev) => {
+      if (prev === 1) {
+        stop();
+        setDisableGuessButton(false);
+        return 5;
+      }
+      return prev - 1;
+    });
+  }, 1000);
+
   const guessForm = useForm(
     {
       fields: [
@@ -275,6 +289,9 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
           ui.showToast({ text: `"${guess}" is already in the Top 18.` });
         }
       }
+      setDisableGuessButton(true);
+      setCountdown(5);
+      start();
     }
   );
 
@@ -382,7 +399,13 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
           />
         <spacer grow />
         {!gameHistory.solved_by ? (
-          <button appearance='primary' onPress={showGuessForm}>Submit Guess</button>
+          <button
+            appearance='primary'
+            disabled={disableGuessButton}
+            onPress={!disableGuessButton ? showGuessForm : undefined}
+          >
+            {disableGuessButton ? `Wait ${countdown}s` : 'Submit Guess'}
+          </button>
         ) : (
           <vstack>
             <vstack>
