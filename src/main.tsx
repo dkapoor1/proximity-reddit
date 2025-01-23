@@ -136,23 +136,10 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
   }
 
   async function updateRankedWordList(gameId: number) {
-    // try {
-    //   // Attempt to load from local file
-    //   const data = await import(`./word-lists/proximity_devvit_${gameId}.json`);
-    //   if (data.rankings && Array.isArray(data.rankings)) {
-    //     await redis.set('ranked_word_list', JSON.stringify(data.rankings));
-    //     console.log(`Ranked word list updated from local file for Game ID ${gameId}`);
-    //   } else {
-    //     throw new Error('Invalid word list format from local file');
-    //   }
-    // } catch (localError) {
-    //   console.error(`Local fetch error: ${localError}`);
-
       const s3Url = `https://proximity-game.s3.us-east-1.amazonaws.com/proximity_devvit_${gameId}.json`;
       try {
         const response = await fetch(s3Url);
         if (!response.ok) throw new Error(`Failed to fetch from S3 for Game ID ${gameId}`);
-    
         const data = await response.json();
         if (data.rankings && Array.isArray(data.rankings)) {
           await redis.set('ranked_word_list', JSON.stringify(data.rankings));
@@ -163,7 +150,6 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
       } catch (s3Error) {
         console.error(`S3 fetch error: ${s3Error}`);
       }
-    // }
   }
 
   const handleGameSolve = async (rankedWordList: string[], currGameId: string, top18Stored: { word: string; rank: number }[]) => {
@@ -279,6 +265,12 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
           setTop18(top18Stored);
           await top18Channel.send({ top18: top18Stored, session: mySession, currGameId: currGameId });
           console.log('Updated Top 18 Guesses:', top18Stored);
+          if (typeof postId === 'string') {
+            await reddit.submitComment({
+              id: postId,
+              text: `Guess: ${guess} \n\nRank: ${rank}`,
+            });
+          }
         } else {
           ui.showToast({ text: `"${guess}" is already in the Top 18.` });
         }
