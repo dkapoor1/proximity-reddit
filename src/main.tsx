@@ -14,12 +14,12 @@ Devvit.configure({
 });
 
 type RealtimeMessage = {
-  top18: { word: string; rank: number }[];
+  top18: { word: string; rank: number; guessedAt?: number }[];
   session: string;
   gameHistory?: {
     solved_by: string;
     target_word: string;
-    top_18: { word: string; rank: number }[];
+    top_18: { word: string; rank: number; guessedAt?: number }[];
   };
   currGameId?: string;
   toastMessage?: string;
@@ -39,7 +39,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
   const [showInfo, setShowInfo] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
 
-  const [top18, setTop18] = useState<{ word: string; rank: number }[]>(async () => {
+  const [top18, setTop18] = useState<{ word: string; rank: number; guessedAt?: number }[]>(async () => {
     const data = JSON.parse((await redis.get('top_18_guesses')) || '[]');
     return data;
   });
@@ -55,7 +55,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
   const [gameHistory, setGameHistory] = useState<{
     solved_by?: string;
     target_word?: string;
-    top_18?: { word: string; rank: number }[];
+    top_18?: { word: string; rank: number; guessedAt?: number }[];
   }>({ target_word: '', solved_by: '', top_18: [] });
 
   const [currentUsername] = useState(async () => {
@@ -164,7 +164,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
       }
   }
 
-  const handleGameSolve = async (rankedWordList: string[], currGameId: string, top18Stored: { word: string; rank: number }[]) => {
+  const handleGameSolve = async (rankedWordList: string[], currGameId: string, top18Stored: { word: string; rank: number; guessedAt?: number }[]) => {
     const gameHistory = {
       solved_by: currentUsername,
       target_word: rankedWordList[0],
@@ -263,7 +263,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
       } else {
         const rank = wordIndex + 1;
         ui.showToast({ text: `${guess} rank: ${rank}` });
-        const top18Stored: { word: string; rank: number }[] = JSON.parse(
+        const top18Stored: { word: string; rank: number; guessedAt?: number }[] = JSON.parse(
           (await redis.get('top_18_guesses')) || '[]'
         );
 
@@ -273,7 +273,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
 
         if (!top18Stored.some(item => item.word === guess)) {
           if (top18Stored.length < 18) {
-            top18Stored.push({ word: guess, rank });
+            top18Stored.push({ word: guess, rank, guessedAt: Date.now() });
           } else {
             const maxRankIndex = top18Stored.reduce(
               (maxIndex, item, index, array) =>
@@ -281,7 +281,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
               0
             );
             if (rank < top18Stored[maxRankIndex].rank) {
-              top18Stored[maxRankIndex] = { word: guess, rank };
+              top18Stored[maxRankIndex] = { word: guess, rank, guessedAt: Date.now() };
             }
           }
           top18Stored.sort((a, b) => a.rank - b.rank);
@@ -323,7 +323,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     }
   });
 
-  const renderGuesses = (guesses: { word: string; rank: number }[]) => {
+  const renderGuesses = (guesses: { word: string; rank: number; guessedAt?: number }[]) => {
     const filledGuesses = Array.from({ length: 18 }, (_, index) =>
       guesses[index] || { word: '', rank: '' }
     );
@@ -332,19 +332,19 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
         <hstack>
           <vstack gap="small">
             {filledGuesses.slice(0, 6).map((item) => (
-              <StyledBox word={item.word} rank={item.rank} />
+              <StyledBox word={item.word} rank={item.rank} guessedAt={item.guessedAt} />
             ))}
           </vstack>
           <spacer width="8px" />
           <vstack gap="small">
             {filledGuesses.slice(6, 12).map((item) => (
-              <StyledBox word={item.word} rank={item.rank} />
+              <StyledBox word={item.word} rank={item.rank} guessedAt={item.guessedAt} />
             ))}
           </vstack>
           <spacer width="8px" />
           <vstack gap="small">
             {filledGuesses.slice(12, 18).map((item) => (
-              <StyledBox word={item.word} rank={item.rank} />
+              <StyledBox word={item.word} rank={item.rank} guessedAt={item.guessedAt} />
             ))}
           </vstack>
         </hstack>

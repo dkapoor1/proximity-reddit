@@ -3,6 +3,7 @@ import { Devvit } from '@devvit/public-api';
 interface StyledBoxProps {
   word: string;
   rank: number;
+  guessedAt?: number;
   minWidth?: Devvit.Blocks.SizeString;
   maxWidth?: Devvit.Blocks.SizeString;
   height?: Devvit.Blocks.SizeString;
@@ -14,6 +15,7 @@ export const StyledBox = (props: StyledBoxProps): JSX.Element => {
   const {
     word,
     rank,
+    guessedAt,
     minWidth = '120px',
     maxWidth = '120px',
     height = '30px',
@@ -30,12 +32,19 @@ export const StyledBox = (props: StyledBoxProps): JSX.Element => {
     return '#ee6055';
   };
 
+  const recentGuessBorderColor =
+  guessedAt && Date.now() - guessedAt < 10000 ? '#0000FF' : borderColor;
+
+  const recentGuessBorderWidth =
+  guessedAt && Date.now() - guessedAt < 10000 ? 'thick' : 'thin';
+
   return (
     <hstack
       minWidth={minWidth}
       maxWidth={maxWidth}
       height={height}
-      borderColor={borderColor}
+      borderColor={recentGuessBorderColor}
+      border={recentGuessBorderWidth}
       padding="xsmall"
       alignment="middle"
       cornerRadius = 'medium'
