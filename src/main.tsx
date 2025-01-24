@@ -193,6 +193,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     });
     await redis.set('active_game', newPost.url);
     await redis.set('post_creation_pending', 'false')
+    await redis.set('game_created_at', Date.now().toString());
     // console.log("sending to top18 channel")
     setCurrGameIdState(newGameId)
 
@@ -290,9 +291,21 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
           await top18Channel.send({ top18: top18Stored, session: mySession, currGameId: currGameId });
           console.log('Updated Top 18 Guesses:', top18Stored);
           if (typeof postId === 'string') {
+            const gameCreatedAt = await redis.get('game_created_at');
+            let timeElapsedStr = '';
+            if (gameCreatedAt) {
+              const diff = Date.now() - parseInt(gameCreatedAt, 10);
+              const totalSeconds = Math.floor(diff / 1000);
+              const hours = Math.floor(totalSeconds / 3600);
+              const minutes = Math.floor((totalSeconds % 3600) / 60);
+              const seconds = totalSeconds % 60;
+              timeElapsedStr = `${hours.toString().padStart(2, '0')}:${minutes
+                .toString()
+                .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
             await reddit.submitComment({
               id: postId,
-              text: `Guess: ${guess} \n\nRank: ${rank}`,
+              text: `u/${currentUsername} guessed **${guess} - ${rank}** after ${timeElapsedStr}`,
             });
           }
         } else {
