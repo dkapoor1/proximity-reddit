@@ -65,6 +65,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
 
   const [disableGuessButton, setDisableGuessButton] = useState(false);
   const [countdown, setCountdown] = useState(5);
+  const [activeGameUrl, setActiveGameUrl] = useState('');
   
   const top18Channel = useChannel<RealtimeMessage>({
     name: 'top18_state',
@@ -89,6 +90,14 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     },
   });
   top18Channel.subscribe();  
+
+  useState(async () => {
+    const storedUrl = await redis.get('active_game');
+    console.log(storedUrl)
+    if (storedUrl) {
+      setActiveGameUrl(storedUrl);
+    }
+  });
 
   async function loadSolvedGameHistory(currentTitleId: string) {
     const solvedGameHistory = JSON.parse(
@@ -171,7 +180,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     await redis.del('top_18_guesses'); // Clear top 18 guesses
     const currentSubreddit = await reddit.getCurrentSubreddit();
     await redis.set('post_creation_pending', 'true')
-    await reddit.submitPost({
+    const newPost = await reddit.submitPost({
       title: `Proximity #${newGameId}`,
       subredditName: currentSubreddit.name,
       preview: (
@@ -182,6 +191,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
         </vstack>
       ),
     });
+    await redis.set('active_game', newPost.url);
     await redis.set('post_creation_pending', 'false')
     // console.log("sending to top18 channel")
     setCurrGameIdState(newGameId)
@@ -432,7 +442,13 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
         <spacer width="10px" />
       </hstack>
       <vstack alignment="center bottom" grow>
-        <text weight="bold" color='black'>Top 18 Guesses (word, rank)</text>
+        {gameHistory.solved_by && activeGameUrl ? (
+            <button appearance='primary' size='small' onPress={() => ui.navigateTo(activeGameUrl)}>
+              Go To Active Game
+            </button>
+          ) : (
+            <text weight="bold" color='black'>Top 18 Guesses (word, rank)</text>
+        )}
       </vstack>
       <vstack alignment="center middle" grow>
         <spacer height="10px" />
