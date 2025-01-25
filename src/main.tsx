@@ -209,6 +209,25 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     await redis.hincrby(leaderboardKey, currentUsername, 1);
     // console.log("displaying toast")
     ui.showToast({ text: `Congratulations! You've guessed the secret word.` });
+
+    const updatedScoreString = await redis.hGet(leaderboardKey, currentUsername || '');
+    const updatedScore = updatedScoreString ? parseInt(updatedScoreString, 10) : 0;
+    
+    let flairText = '';
+    if (updatedScore >= 100) {
+      flairText = '100+ Solved';
+    } else if (updatedScore >= 10) {
+      flairText = '10+ Solved';
+    } else if (updatedScore >= 1) {
+      flairText = 'Solver';
+    }
+    
+    await reddit.setUserFlair({
+      subredditName: currentSubreddit.name,
+      username: currentUsername,
+      text: flairText,
+    });
+    
     return;
   };
 
