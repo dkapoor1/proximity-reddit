@@ -252,7 +252,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
           required: true,
         },
       ],
-      title: 'Submit Your Guess',
+      title: 'Submit Your Guess - top guesses will be posted as comments',
       acceptLabel: 'Submit',
     },
     async (values) => {
@@ -324,7 +324,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
             }
             await reddit.submitComment({
               id: postId,
-              text: `u/${currentUsername} guessed **${guess} - ${rank}** after ${timeElapsedStr}`,
+              text: `${currentUsername} guessed **${guess} - ${rank}** after ${timeElapsedStr}`,
             });
           }
         } else {
