@@ -4,7 +4,7 @@ import json
 from datetime import datetime, timedelta
 
 # Load the GoogleNews Word2Vec model
-model = KeyedVectors.load_word2vec_format('GoogleNews-vectors-negative300.bin', binary=True)
+model = KeyedVectors.load_word2vec_format('./GoogleNews-vectors-negative300.bin', binary=True)
 
 # Read the list of nouns from nounlist.csv
 with open('nounlist.csv', mode='r', newline='') as file:
@@ -16,10 +16,10 @@ with open('themewords.txt', 'r') as file:
     theme_words = [line.strip() for line in file]
 
 # Set the starting index
-start_index = 113  # Adjust based on the required starting point
+start_index = 982  # Adjust based on the required starting point
 
 # Initialize a counter for the output file numbering
-file_counter = 1
+file_counter = 982
 
 for i, target_word in enumerate(theme_words[start_index:], start=start_index):
     # Generate the output filename with incremental numbering
