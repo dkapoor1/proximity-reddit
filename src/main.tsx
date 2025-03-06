@@ -71,8 +71,6 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     name: 'top18_state',
     onMessage: (msg) => {
       if (msg.session !== mySession && msg.currGameId === currGameIdState) {
-        // console.log('currGameIdState:', currGameIdState);
-        // console.log('msg:', msg )
         setTop18(msg.top18);
         if (msg.gameHistory) {
           setGameHistory(msg.gameHistory);
@@ -105,7 +103,7 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     );
     setGameHistory(solvedGameHistory);
     const currentGameId = await redis.get('curr_game_id');
-    setCurrGameIdState(currentGameId as string); // Update state to trigger re-render
+    setCurrGameIdState(currentGameId as string);
   }
 
   async function initializeGame() {
@@ -164,7 +162,11 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
       }
   }
 
-  const handleGameSolve = async (rankedWordList: string[], currGameId: string, top18Stored: { word: string; rank: number; guessedAt?: number }[]) => {
+  const handleGameSolve = async (
+    rankedWordList: string[],
+    currGameId: string,
+    top18Stored: { word: string; rank: number; guessedAt?: number }[],
+  ) => {
     const gameHistory = {
       solved_by: currentUsername,
       target_word: rankedWordList[0],
@@ -177,9 +179,9 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
     await redis.set('curr_game_id', newGameId);
     await updateRankedWordList(parseInt(newGameId, 10));
 
-    await redis.del('top_18_guesses'); // Clear top 18 guesses
+    await redis.del('top_18_guesses');
     const currentSubreddit = await reddit.getCurrentSubreddit();
-    await redis.set('post_creation_pending', 'true')
+    await redis.set('post_creation_pending', 'true');
     const newPost = await reddit.submitPost({
       title: `Proximity #${newGameId}`,
       subredditName: currentSubreddit.name,
@@ -191,11 +193,17 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
         </vstack>
       ),
     });
+    const historyComment = await reddit.submitComment({
+      id: newPost.id,
+      text: "r/playproximity is an interactive post built with Reddit's developer platform. Check replies to this comment to see how our users guessed the secret word!",
+    });
+    if (historyComment?.id) {
+      await redis.set(`history_comment`, historyComment.id);
+    }
     await redis.set('active_game', newPost.url);
-    await redis.set('post_creation_pending', 'false')
+    await redis.set('post_creation_pending', 'false');
     await redis.set('game_created_at', Date.now().toString());
-    // console.log("sending to top18 channel")
-    setCurrGameIdState(newGameId)
+    setCurrGameIdState(newGameId);
 
     await top18Channel.send({
       session: mySession,
@@ -204,10 +212,8 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
       currGameId: newGameId,
       toastMessage: `Proximity #${currGameId} solved by u/${currentUsername}`,
     });
-    // console.log("setting leaderboard")
     const leaderboardKey = 'leaderboard';
     await redis.hincrby(leaderboardKey, currentUsername, 1);
-    // console.log("displaying toast")
     ui.showToast({ text: `Congratulations! You've guessed the secret word.` });
 
     const updatedScoreString = await redis.hGet(leaderboardKey, currentUsername || '');
@@ -286,8 +292,12 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
         const top18Stored: { word: string; rank: number; guessedAt?: number }[] = JSON.parse(
           (await redis.get('top_18_guesses')) || '[]'
         );
-
+        const storedHistoryCommentId = (await redis.get(`history_comment`)) || "";
         if (rank === 1) {
+          await reddit.submitComment({
+            id: storedHistoryCommentId,
+            text: `${currentUsername} guessed **${guess} - ${rank}**`,
+          });
           handleGameSolve(rankedWordList, currGameId, top18Stored)
         }
 
@@ -308,25 +318,14 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
           await redis.set('top_18_guesses', JSON.stringify(top18Stored));
           setTop18(top18Stored);
           await top18Channel.send({ top18: top18Stored, session: mySession, currGameId: currGameId });
-          console.log('Updated Top 18 Guesses:', top18Stored);
-          if (typeof postId === 'string') {
-            const gameCreatedAt = await redis.get('game_created_at');
-            let timeElapsedStr = '';
-            if (gameCreatedAt) {
-              const diff = Date.now() - parseInt(gameCreatedAt, 10);
-              const totalSeconds = Math.floor(diff / 1000);
-              const hours = Math.floor(totalSeconds / 3600);
-              const minutes = Math.floor((totalSeconds % 3600) / 60);
-              const seconds = totalSeconds % 60;
-              timeElapsedStr = `${hours.toString().padStart(2, '0')}:${minutes
-                .toString()
-                .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            }
+          if (top18Stored[0].word === guess) {
+            console.log(storedHistoryCommentId)
             await reddit.submitComment({
-              id: postId,
-              text: `${currentUsername} guessed **${guess} - ${rank}** after ${timeElapsedStr}`,
+              id: storedHistoryCommentId,
+              text: `${currentUsername} guessed **${guess} - ${rank}**`,
             });
           }
+          console.log('Updated Top 18 Guesses:', top18Stored);
         } else {
           ui.showToast({ text: `"${guess}" is already in the Top 18.` });
         }
@@ -403,14 +402,14 @@ const App: Devvit.CustomPostComponent = ({ useState, useForm, useChannel, redis,
               solves: parseInt(solves as string, 10),
             }))
             .sort((a, b) => b.solves - a.solves)
-            .slice(0, 8); // Take top 8 users
+            .slice(0, 8);
           setLeaderboardData(sortedData);
         } else {
-          setLeaderboardData([]); // Handle case when no data is available
+          setLeaderboardData([]);
         }
       } catch (error) {
         console.error('Failed to fetch leaderboard:', error);
-        setLeaderboardData([]); // Fallback in case of error
+        setLeaderboardData([]);
       }
     });
   
